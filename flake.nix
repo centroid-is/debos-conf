@@ -15,17 +15,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             debos
-            # Additional development tools
-            git
-            qemu
-            debian-archive-keyring
           ];
-
-          shellHook = ''
-            echo "Debos development environment loaded"
-            echo "Available commands:"
-            echo "  debos - Debian OS image builder"
-          '';
         };
       }
     );
