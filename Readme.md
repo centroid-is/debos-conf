@@ -1,13 +1,15 @@
-# Create image
+# Using ansible
 
+On local machine
 ```bash
-export ROOT_PWD='yourRootPass'
-export CENTROID_PWD='yourUserPass'
-debos usb-installer.yaml
+scp ansible-playbook.yml centroid@10.11.11.191:~/
 ```
 
-# On nixos Create .envrc
-
+On remote machine
 ```bash
-echo "use flake" > .envrc
+su
+apt-get install ansible
+export PATH="$PATH:/usr/sbin" # for sysctl
+ansible-playbook -i localhost -e 'root_password=foo' -e 'centroid_password=bar' ansible-playbook.yml
 ```
+

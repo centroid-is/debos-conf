@@ -27,6 +27,12 @@
         append: yes
         create_home: yes
 
+    - name: Allow centroid user passwordless sudo
+      copy:
+        dest: /etc/sudoers.d/centroid
+        content: "centroid ALL=(ALL) NOPASSWD:ALL\n"
+        mode: '0440'
+
     - name: Install prerequisites
       apt:
         name:
@@ -89,6 +95,7 @@
           - containerd.io
           - docker-buildx-plugin
           - docker-compose-plugin
+          - procps
         state: present
 
     - name: Check if running in container
