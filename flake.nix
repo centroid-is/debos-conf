@@ -1,5 +1,5 @@
 {
-  description = "Debos development environment";
+  description = "Debian OS builder";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,10 +13,9 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            debos
-          ];
+          shellHook = ''
+            export NIX_SHELL_SETUID=1
+          '';
         };
-      }
-    );
+      });
 }
