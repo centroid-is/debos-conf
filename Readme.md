@@ -12,3 +12,7 @@ apt-get install ansible sudo
 ansible-playbook -i localhost -e 'root_password=foo' -e 'centroid_password=bar' ansible-playbook.yml
 ```
 
+# Todo add to ansible
+```
+sudo apt install -y firmware-misc-nonfree intel-media-va-driver libgl1-mesa-dri libgbm1 mesa-vulkan-drivers
+```
