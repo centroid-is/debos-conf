@@ -7,6 +7,63 @@
     root_password: "{{ root_password }}"
     centroid_password: "{{ centroid_password }}"
   tasks:
+    - name: Ensure systemd-timesyncd is present (for timedatectl/NTPSync)
+      apt:
+        name: systemd-timesyncd
+        state: present
+
+    - name: Enable NTP (systemd-timesyncd)
+      command: timedatectl set-ntp true
+      changed_when: false
+
+    - name: Wait for NTP sync
+      shell: timedatectl show -p NTPSynchronized --value
+      register: ntp_sync
+      retries: 15
+      delay: 2
+      until: ntp_sync.stdout == "yes"
+      changed_when: false
+
+    - name: Set timezone from -e tz=... or $TZ or default
+      timezone:
+        name: "{{ tz | default(lookup('env','TZ'), true) | default('Atlantic/Reykjavik', true) }}"
+
+    # --- Keep UEFI logo via Plymouth BGRT -----------
+    - name: Install plymouth (and themes for BGRT)
+      apt:
+        name:
+          - plymouth
+          - plymouth-themes
+        state: present
+
+    - name: Ensure quiet splash on kernel cmdline
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"'
+        create: yes
+      notify: update-grub
+
+    - name: Keep GRUB payload into kernel (no mode switch flicker)
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^#?GRUB_GFXPAYLOAD_LINUX='
+        line: 'GRUB_GFXPAYLOAD_LINUX=keep'
+        create: yes
+      notify: update-grub
+
+    - name: Set Plymouth theme to BGRT and rebuild initramfs
+      command: plymouth-set-default-theme -R bgrt
+    # ---------------------------------------------------------------
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - sudo
+        state: present
 
     - name: Set root password
       user:
@@ -32,14 +89,6 @@
         dest: /etc/sudoers.d/centroid
         content: "centroid ALL=(ALL) NOPASSWD:ALL\n"
         mode: '0440'
-
-    - name: Install prerequisites
-      apt:
-        name:
-          - ca-certificates
-          - curl
-          - gnupg
-        state: present
 
     - name: Prepare Docker keyrings
       file:
@@ -83,7 +132,6 @@
     - name: Install base packages
       apt:
         name:
-          - sudo
           - vim
           - openssh-server
           - ufw
@@ -96,6 +144,12 @@
           - docker-buildx-plugin
           - docker-compose-plugin
           - procps
+          - fish
+          - firmware-misc-nonfree
+          - intel-media-va-driver
+          - libgl1-mesa-dri
+          - libgbm1
+          - mesa-vulkan-drivers
         state: present
 
     # --- Headless GNOME Keyring for flutter_secure_storage (HOST) ---
@@ -106,7 +160,6 @@
           - dbus-user-session
           - gnome-keyring
           - libsecret-1-0
-          - libsecret-tools   # provides 'secret-tool' for tests
         state: present
 
     - name: Get centroid UID
@@ -223,3 +276,7 @@
         content: |
           APT::Periodic::Update-Package-Lists "7";
           APT::Periodic::Unattended-Upgrade "7";
+
+  handlers:
+    - name: update-grub
+      command: update-grub
