@@ -44,6 +44,14 @@
         create: yes
       notify: update-grub
 
+    - name: Set timeout to 0 in grub
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_TIMEOUT='
+        line: 'GRUB_TIMEOUT=0'
+        create: yes
+      notify: update-grub
+
     - name: Keep GRUB payload into kernel (no mode switch flicker)
       lineinfile:
         path: /etc/default/grub
