@@ -54,6 +54,14 @@
         line: 'GRUB_TIMEOUT=0'
         create: yes
       notify: update-grub
+      
+    - name: Set GRUB_TIMEOUT_STYLE
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_TIMEOUT_STYLE='
+        line: 'GRUB_TIMEOUT_STYLE=hidden'
+        create: yes
+      notify: update-grub
 
     - name: Keep GRUB payload into kernel (no mode switch flicker)
       lineinfile:
@@ -209,7 +217,8 @@
         content: |
           [Unit]
           Description=Headless GNOME Keyring (Secret Service) for Flutter
-          After=network.target
+          After=network.target user@1000.service
+          Before=docker.service docker.socket
 
           [Service]
           Type=simple
@@ -222,12 +231,6 @@
           # Provide the password as a runtime credential (readable to this service)
           LoadCredential=keyring_password:/etc/hmi/keyring_password
 
-          # Prepare a session bus
-          ExecStartPre=/bin/mkdir -p /run/user/1000
-          ExecStartPre=/bin/chown centroid:centroid /run/user/1000
-          ExecStartPre=-/bin/rm -f /run/user/1000/bus
-          ExecStartPre=/usr/bin/dbus-daemon --session --address=unix:path=/run/user/1000/bus --fork --print-address
-
           # 1) create/unlock the login keyring using our credential
           # 2) start the secrets component in the foreground (owns org.freedesktop.secrets)
           ExecStart=/bin/sh -lc 'gnome-keyring-daemon --unlock < /run/credentials/%N.service/keyring_password; exec gnome-keyring-daemon --start --components=secrets --foreground'
@@ -238,6 +241,8 @@
           [Install]
           WantedBy=multi-user.target
 
+    - name: Enable linger for centroid user
+      command: loginctl enable-linger centroid
 
     - name: Reload systemd and enable/start hmi-keyring
       systemd:
@@ -246,6 +251,11 @@
         enabled: yes
         state: started
 
+    - name: Enable docker.service
+      systemd:
+        name: docker.service
+        enabled: yes
+        state: started
     # ---------------------------------------------------------------
 
     - name: Check if running in container
