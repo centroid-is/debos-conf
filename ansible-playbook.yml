@@ -7,9 +7,12 @@
     root_password: "{{ root_password }}"
     centroid_password: "{{ centroid_password }}"
   tasks:
-    - name: Ensure systemd-timesyncd is present (for timedatectl/NTPSync)
+    - name: Ensure prereqs are installed
       apt:
-        name: systemd-timesyncd
+        name:
+          - systemd-timesyncd
+          - python3-passlib
+          - lsb-release
         state: present
 
     - name: Enable NTP (systemd-timesyncd)

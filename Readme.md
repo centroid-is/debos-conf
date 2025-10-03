@@ -8,7 +8,7 @@ scp ansible-playbook.yml centroid@10.11.11.191:~/
 On remote machine
 ```bash
 su -
-apt-get install ansible
+apt install ansible --no-install-recommends
 ansible-playbook -i localhost -e 'root_password=foo' -e 'centroid_password=bar' ansible-playbook.yml
 ```
 
