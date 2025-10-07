@@ -269,6 +269,25 @@
         state: started
       when: not is_container
 
+    - name: Reinitialize /etc/network/interfaces with default config
+      copy:
+        dest: /etc/network/interfaces
+        content: |
+          # This file describes the network interfaces available on your system
+          # and how to activate them. For more information, see interfaces(5).
+
+          # The loopback network interface
+          auto lo
+          iface lo inet loopback
+        mode: '0644'
+      when: not is_container
+
+    - name: Disable systemd networking service
+      systemd:
+        name: networking.service
+        enabled: no
+      when: not is_container
+
     - name: Allow SSH & VNC through UFW
       ufw:
         rule: allow
