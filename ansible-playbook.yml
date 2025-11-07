@@ -175,6 +175,21 @@
       set_fact:
         is_container: "{{ ansible_virtualization_type == 'docker' }}"
 
+    - name: Add PolicyKit rule to allow centroid user to manage NetworkManager
+      copy:
+        dest: /etc/polkit-1/rules.d/50-networkmanager-container.rules
+        content: |
+          // PolicyKit rule to allow uid 1000 to manage NetworkManager
+          // This file should be copied to the host system at:
+          // /etc/polkit-1/rules.d/50-networkmanager-container.rules
+
+          polkit.addRule(function(action, subject) {
+              if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 && subject.user == "centroid") {
+                  return polkit.Result.YES;
+              }
+          });
+        mode: '0644'
+
     - name: Ensure NetworkManager is enabled
       systemd:
         name: NetworkManager
