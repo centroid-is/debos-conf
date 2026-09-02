@@ -190,6 +190,46 @@
           });
         mode: '0644'
 
+    - name: Add PolicyKit rule to allow centroid user to set the clock and NTP
+      copy:
+        dest: /etc/polkit-1/rules.d/49-centroid-clock.rules
+        content: |
+          // PolicyKit rule to allow uid 1000 to set the host clock.
+          //
+          // systemd ships every timedate1 setter, and timesync1's
+          // set-runtime-servers, as auth_admin_keep. The HMI container has
+          // no polkit agent to answer that prompt, so without this rule the
+          // Date & Time section on its About Linux page can read the clock
+          // and the sync status -- those need no authorisation -- but every
+          // change is refused with
+          // org.freedesktop.DBus.Error.InteractiveAuthorizationRequired.
+          //
+          // Matches 50-networkmanager-container.rules on subject.user rather
+          // than the local && active && isInGroup form Debian uses: the HMI
+          // process lives in /system.slice/docker-<id>.scope with no logind
+          // session, so polkit sees it as neither local nor active and a
+          // rule of that shape would never fire.
+          //
+          // Check with the container's own pid, not a shell -- a login shell
+          // has a session and the container does not:
+          //   pkcheck --action-id org.freedesktop.timedate1.set-ntp \
+          //           --process $(docker inspect -f '{{ '{{' }}.State.Pid{{ '}}' }}' flutter)
+
+          polkit.addRule(function(action, subject) {
+              var allowed = [
+                  "org.freedesktop.timedate1.set-time",
+                  "org.freedesktop.timedate1.set-timezone",
+                  "org.freedesktop.timedate1.set-local-rtc",
+                  "org.freedesktop.timedate1.set-ntp",
+                  "org.freedesktop.timesync1.set-runtime-servers"
+              ];
+
+              if (allowed.indexOf(action.id) !== -1 && subject.user == "centroid") {
+                  return polkit.Result.YES;
+              }
+          });
+        mode: '0644'
+
     - name: Ensure NetworkManager is enabled
       systemd:
         name: NetworkManager
