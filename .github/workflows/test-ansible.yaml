@@ -28,7 +28,8 @@ jobs:
       # Every `copy:` body is Jinja-templated by Ansible before it is written,
       # so a literal `{{` in a config file -- a polkit rule quoting a
       # `docker inspect -f` format string, say -- has to be escaped or the
-      XX      # these, so render them here.
+      # play dies at apply time on a station. --syntax-check does not look
+      # inside these, so check them here.
       - name: Parse templated file contents
         run: |
           python3 - <<'PY'
