@@ -22,9 +22,50 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      - name: Run Ansible playbook
+      - name: Syntax check
+        run: ansible-playbook --syntax-check ansible-playbook.yml
+
+      # Every `copy:` body is Jinja-templated by Ansible before it is written,
+      # so a literal `{{` in a config file -- a polkit rule quoting a
+      # `docker inspect -f` format string, say -- has to be escaped or the
+      XX      # these, so render them here.
+      - name: Parse templated file contents
+        run: |
+          python3 - <<'PY'
+          import yaml, jinja2, sys
+
+          play = yaml.safe_load(open('ansible-playbook.yml'))[0]
+          env = jinja2.Environment()
+          failed = []
+
+          for task in play.get('tasks', []):
+              body = (task.get('copy') or {}).get('content')
+              if not body:
+                  continue
+              try:
+                  # Parse, not render: several bodies legitimately reference
+                  # facts like ansible_lsb that only exist during a real run,
+                  # and rendering would fail on those. Parsing still catches
+                  # the delimiter mistakes this exists for.
+                  env.parse(body)
+              except jinja2.TemplateSyntaxError as exc:
+                  failed.append((task.get('name', '<unnamed>'), exc))
+
+          for name, exc in failed:
+              print(f'::error::{name}: {exc}')
+          sys.exit(1 if failed else 0)
+          PY
+
+      # Applying the whole playbook to a GitHub runner cannot succeed: it
+      # provisions bare-metal Debian, so it reaches for things a runner has no
+      # business having -- Plymouth's BGRT theme, GRUB, UFW, a real seat. It
+      # is kept because the output is still useful to read when a task is
+      # changed, but it does not gate the PR on the runner not being a
+      # station.
+      - name: Run Ansible playbook (informational)
+        continue-on-error: true
         run: |
           ansible-playbook -i localhost, \
             -e 'root_password=testroot' \
             -e 'centroid_password=testcentroid' \
-            ansible-playbook.yml 
+            ansible-playbook.yml

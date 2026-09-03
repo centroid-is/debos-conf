@@ -230,6 +230,45 @@
           });
         mode: '0644'
 
+    - name: Add PolicyKit rule to allow centroid user to reboot and power off
+      copy:
+        dest: /etc/polkit-1/rules.d/49-centroid-power.rules
+        content: |
+          // PolicyKit rule to allow uid 1000 to reboot and power off the host.
+          //
+          // The HMI's About Linux page has Reboot and Power Off buttons that
+          // call org.freedesktop.login1 Reboot()/PowerOff(). logind allows
+          // those for an active local session, which the HMI container is
+          // not -- it lives in /system.slice/docker-<id>.scope with no
+          // logind session -- so without this rule both are refused.
+          //
+          // The -multiple-sessions variants are needed too: a station
+          // normally has more than one session (the seat plus the manager),
+          // and logind checks the multiple-sessions action whenever another
+          // session exists.
+          //
+          // Deliberately NOT granting reboot-ignore-inhibit or
+          // power-off-ignore-inhibit. Those force shutdown past a *block*
+          // inhibitor; the inhibitors on a station are delay-mode
+          // (unattended-upgrades, ModemManager, NetworkManager), which do not
+          // need it. Leaving them out means a genuine block -- an upgrade
+          // deliberately holding shutdown -- still stops the button, and the
+          // page reports why instead of interrupting it.
+
+          polkit.addRule(function(action, subject) {
+              var allowed = [
+                  "org.freedesktop.login1.reboot",
+                  "org.freedesktop.login1.reboot-multiple-sessions",
+                  "org.freedesktop.login1.power-off",
+                  "org.freedesktop.login1.power-off-multiple-sessions"
+              ];
+
+              if (allowed.indexOf(action.id) !== -1 && subject.user == "centroid") {
+                  return polkit.Result.YES;
+              }
+          });
+        mode: '0644'
+
     - name: Ensure NetworkManager is enabled
       systemd:
         name: NetworkManager
